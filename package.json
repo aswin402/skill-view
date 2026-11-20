@@ -1,0 +1,24 @@
+{
+  "name": "skillspectator-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "bun run scripts/dev.ts",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "build": "bun run --cwd apps/web build",
+    "test": "bun test packages/core/tests apps/api/tests",
+    "scan": "bun run packages/core/src/cli.ts scan",
+    "skillspectator": "bun run packages/core/src/cli.ts",
+    "ui": "bun run packages/core/src/cli.ts ui"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

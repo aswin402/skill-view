@@ -1,0 +1,39 @@
+{
+  "agent_instructions": {
+    "active_skills": [
+      "hono.md",
+      "vite.md"
+    ],
+    "docs_directory": "onpkg_docs/"
+  },
+  "architecture": {},
+  "packages": {
+    "added_by_agent": [],
+    "core": []
+  },
+  "project": {
+    "name": "api",
+    "package_manager": "npm",
+    "runtime": "node",
+    "stack": "hono-api"
+  },
+  "scripts": {
+    "build": "npm run build",
+    "dev": "npm run dev"
+  },
+  "sources": {
+    "directories": [
+      "src",
+      "src/utils"
+    ],
+    "file_patterns": [
+      "*.md",
+      "*.ts"
+    ],
+    "files": [
+      "README.md",
+      "src/server.ts",
+      "src/utils/logger.ts"
+    ]
+  }
+}

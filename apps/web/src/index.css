@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  --bg-chassis: #07090d;
+  --bg-panel: #0c1017;
+  --bg-elevated: #111722;
+  --bg-hover: #172030;
+  --border-grid: #1d2636;
+  --border-strong: #2b384e;
+
+  --text-primary: #edf2f7;
+  --text-secondary: #94a3b8;
+  --text-muted: #596980;
+
+  --accent-telemetry: #22d3ee;
+  --accent-telemetry-dim: rgba(34, 211, 238, 0.12);
+
+  --verdict-safe: #10b981;
+  --verdict-safe-bg: rgba(16, 185, 129, 0.1);
+  --verdict-caution: #f59e0b;
+  --verdict-caution-bg: rgba(245, 158, 11, 0.11);
+  --verdict-block: #ef4444;
+  --verdict-block-bg: rgba(239, 68, 68, 0.12);
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border-grid);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-chassis);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+/* Subtle forensic telemetry grid backdrop */
+.forensic-grid-bg {
+  background-color: var(--bg-chassis);
+  background-image:
+    linear-gradient(to right, rgba(29, 38, 54, 0.36) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(29, 38, 54, 0.36) 1px, transparent 1px),
+    radial-gradient(ellipse 70% 38% at 50% 0%, rgba(34, 211, 238, 0.07), transparent);
+  background-size: 36px 36px, 36px 36px, 100% 100%;
+}
+
+/* Crisp custom scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-chassis);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4c69;
+}
+
+@keyframes scanPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-scan-pulse {
+  animation: scanPulse 1.5s ease-in-out infinite;
+}
