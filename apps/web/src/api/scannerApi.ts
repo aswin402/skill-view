@@ -126,10 +126,20 @@ export async function exportScanArtifact(params: {
   format: "markdown" | "sarif" | "json" | "baseline";
   reason?: string;
 }): Promise<{ filename: string; mimeType: string; content: string }> {
+  // Strip raw component contents on export so large repo reports stay tiny (<4.5 MB Vercel cap)
+  const compactReport = params.report
+    ? {
+        ...params.report,
+        components: params.report.components.map(({ content: _omit, ...rest }) => rest),
+      }
+    : undefined;
   const res = await fetch(`${API_BASE}/api/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      ...params,
+      ...(compactReport ? { report: compactReport } : {}),
+    }),
   });
   return parseEnvelope(res);
 }

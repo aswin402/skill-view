@@ -139,7 +139,7 @@ export function formatSarifReport(report: ScanReport): string {
           driver: {
             name: "SkillSpectator",
             version: report.metadata.skillspectator_version,
-            informationUri: "https://github.com/NVIDIA/SkillSpector",
+            informationUri: "https://github.com/aswin402/skill-view",
             rules: Array.from(uniqueRules.values()),
           },
         },

@@ -18,20 +18,28 @@ describe("SkillSpectator Dynamic Web API", () => {
     expect(metaJson.data.supported_llm_providers.length).toBeGreaterThanOrEqual(5);
   });
 
-  test("GET /api/presets does not exist (no hardcoded preset endpoint)", async () => {
+  test("GET /api/presets does not exist and returns structured 404 JSON", async () => {
     const res = await app.request("/api/presets");
-    // Falls through to SPA handler or non-API response, never hardcoded presets JSON
-    const text = await res.text();
-    expect(text).not.toContain("trojan-chef-exfil");
+    expect(res.status).toBe(404);
+    const json = (await res.json()) as { success: boolean; error: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toContain("Unknown API endpoint");
   });
 
-  test("POST /api/scan/url rejects non-HTTPS URLs", async () => {
+  test("POST /api/scan/url rejects non-HTTPS (400) and SSRF hosts (403)", async () => {
     const badRes = await app.request("/api/scan/url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: "http://localhost:8080/SKILL.md" }),
     });
     expect(badRes.status).toBe(400);
+
+    const ssrfRes = await app.request("/api/scan/url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://169.254.169.254/latest/meta-data/" }),
+    });
+    expect(ssrfRes.status).toBe(403);
   });
 
   test("POST /api/scan/inline derives skill name from SKILL.md frontmatter when omitted", async () => {

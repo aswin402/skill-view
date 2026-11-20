@@ -29,7 +29,24 @@ export interface IngestedBundle {
 
 function isPrivateOrLoopbackHost(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (h === "localhost" || h === "::1" || h === "0.0.0.0" || h.endsWith(".local") || h.endsWith(".internal")) {
+  if (
+    h === "localhost" ||
+    h === "::1" ||
+    h === "::" ||
+    h === "0.0.0.0" ||
+    h === "metadata.google.internal" ||
+    h === "metadata" ||
+    h.endsWith(".local") ||
+    h.endsWith(".internal") ||
+    h.endsWith(".localhost") ||
+    h.startsWith("fe80:") ||
+    h.startsWith("fc") ||
+    h.startsWith("fd") ||
+    h.startsWith("::ffff:127.") ||
+    h.startsWith("::ffff:10.") ||
+    h.startsWith("::ffff:169.254.") ||
+    h.startsWith("::ffff:192.168.")
+  ) {
     return true;
   }
   const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
@@ -39,6 +56,7 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
     if (a === 169 && b === 254) return true;
     if (a === 192 && b === 168) return true;
     if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
   }
   return false;
 }

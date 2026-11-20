@@ -56,10 +56,34 @@ export const ForensicXRayWorkbench: React.FC<ForensicXRayWorkbenchProps> = ({ re
     [report.issues, selectedFindingId],
   );
 
+  const sortedComponents = useMemo(() => {
+    const issueCountByFile = new Map<string, number>();
+    for (const issue of report.issues) {
+      issueCountByFile.set(issue.location.file, (issueCountByFile.get(issue.location.file) ?? 0) + 1);
+    }
+    return [...report.components].sort((a, b) => {
+      const aManifest = a.path.split("/").pop()?.toLowerCase() === "skill.md" ? 0 : 1;
+      const bManifest = b.path.split("/").pop()?.toLowerCase() === "skill.md" ? 0 : 1;
+      if (aManifest !== bManifest) return aManifest - bManifest;
+      const aHits = issueCountByFile.get(a.path) ?? 0;
+      const bHits = issueCountByFile.get(b.path) ?? 0;
+      if (aHits !== bHits) return bHits - aHits;
+      return a.path.localeCompare(b.path);
+    });
+  }, [report.components, report.issues]);
+
   const activeComponent = useMemo(
-    () => report.components.find((c) => c.path === selectedFilePath) ?? report.components[0],
-    [report.components, selectedFilePath],
+    () => report.components.find((c) => c.path === selectedFilePath) ?? sortedComponents[0],
+    [report.components, sortedComponents, selectedFilePath],
   );
+
+  // Auto-scroll the Source Code X-Ray viewport to the selected finding line
+  useEffect(() => {
+    if (rightTab !== "source" || !selectedFinding) return;
+    if (selectedFinding.location.file !== activeComponent?.path) return;
+    const rowEl = document.getElementById(`xray-line-${selectedFinding.location.start_line}`);
+    rowEl?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [rightTab, selectedFinding, activeComponent?.path]);
 
   const lineFindingsMap = useMemo(() => {
     const map = new Map<number, Finding[]>();
@@ -264,8 +288,8 @@ export const ForensicXRayWorkbench: React.FC<ForensicXRayWorkbenchProps> = ({ re
           className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5"
           style={{ borderColor: "var(--border-grid)", backgroundColor: "var(--bg-elevated)" }}
         >
-          <div className="flex flex-wrap items-center gap-1.5">
-            {report.components.map((comp) => {
+          <div className="flex max-h-24 flex-1 flex-wrap items-center gap-1.5 overflow-y-auto pr-1">
+            {sortedComponents.map((comp) => {
               const active = rightTab === "source" && comp.path === activeComponent?.path;
               const fileIssueCount = report.issues.filter((i) => i.location.file === comp.path).length;
               return (
@@ -342,6 +366,7 @@ export const ForensicXRayWorkbench: React.FC<ForensicXRayWorkbenchProps> = ({ re
                       return (
                         <tr
                           key={`${activeComponent.path}-L${ln}`}
+                          id={`xray-line-${ln}`}
                           style={{ backgroundColor: rowBg }}
                           className="hover:bg-white/[0.03]"
                         >

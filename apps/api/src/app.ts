@@ -20,6 +20,68 @@ import {
 import { logger } from "./utils/logger";
 
 const SERVERLESS_MAX_UPLOAD_BYTES = 4_500_000; // Vercel serverless request body cap (~4.5 MB)
+const MAX_EMBEDDED_SOURCE_BYTES = 2_000_000; // Keep API JSON safely below Vercel's 4.5 MB response cap
+const LOCKFILE_NAMES = new Set(["bun.lock", "bun.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "cargo.lock"]);
+
+/**
+ * Bounds embedded `components[].content` in API JSON responses so scanning large repos
+ * never exceeds serverless response size limits, while always keeping SKILL.md and files with findings.
+ */
+function trimReportSourcesForTransport(report: ScanReport): ScanReport {
+  const filesWithFindings = new Set(report.issues.map((i) => i.location.file));
+  const filesWithDeobf = new Set(report.deobfuscation_events.map((e) => e.file));
+
+  // Assign priority: 0 = SKILL.md, 1 = file with findings/deobf, 2 = regular files, 3 = lockfiles/assets
+  const indexed = report.components.map((comp, idx) => {
+    const base = comp.path.split("/").pop()?.toLowerCase() ?? "";
+    const isManifest = base === "skill.md";
+    const hasHit = filesWithFindings.has(comp.path) || filesWithDeobf.has(comp.path);
+    const isLockOrSvg = LOCKFILE_NAMES.has(base) || base.endsWith(".svg");
+    const priority = isManifest ? 0 : hasHit ? 1 : isLockOrSvg ? 3 : 2;
+    return { comp, idx, priority, hasHit, isLockOrSvg };
+  });
+
+  indexed.sort((a, b) => a.priority - b.priority || a.idx - b.idx);
+
+  let usedBytes = 0;
+  const keepContent = new Set<number>();
+  for (const item of indexed) {
+    if (!item.comp.content) continue;
+    // Skip embedding giant lockfiles/SVGs unless they have active findings
+    if (item.isLockOrSvg && !item.hasHit) continue;
+    const len = item.comp.content.length;
+    if (usedBytes + len <= MAX_EMBEDDED_SOURCE_BYTES || item.priority === 0) {
+      keepContent.add(item.idx);
+      usedBytes += len;
+    }
+  }
+
+  return {
+    ...report,
+    components: report.components.map((comp, idx) =>
+      keepContent.has(idx) ? comp : { ...comp, content: undefined },
+    ),
+  };
+}
+
+function classifyErrorStatus(err: Error): 400 | 403 | 404 | 413 | 422 | 500 {
+  const msg = err.message || "";
+  if (msg.startsWith("SSRFBlockedError:")) return 403;
+  if (msg.startsWith("IngestLimitExceededError:")) return 413;
+  if (msg.includes("was not found inside archive") || msg.includes("(HTTP 404)")) return 404;
+  if (
+    msg.startsWith("Only HTTPS") ||
+    msg.startsWith("Direct .git cloning") ||
+    msg.startsWith("Failed to fetch") ||
+    msg.startsWith("GitHub rejected") ||
+    err.name === "YAMLParseError" ||
+    msg.includes("YAML") ||
+    msg.includes("Invalid URL")
+  ) {
+    return 400;
+  }
+  return 500;
+}
 
 /**
  * Resolves the true API path even when Vercel rewrites `/api/(.*)` -> `/api?__path=$1`,
@@ -108,7 +170,7 @@ export function createApiApp(): Hono {
   app.post("/api/scan/inline", zValidator("json", inlineScanSchema), async (c) => {
     const body = c.req.valid("json");
     const baselineData = parseOptionalBaseline(body.baselineYaml);
-    const report = await scanInline(
+    const rawReport = await scanInline(
       { name: body.name?.trim() || undefined, files: body.files },
       {
         useLlm: body.useLlm,
@@ -121,6 +183,7 @@ export function createApiApp(): Hono {
         includeSourceContents: true,
       },
     );
+    const report = trimReportSourcesForTransport(rawReport);
     const scanId = recordHistory(report);
     return c.json({ success: true, data: { scanId, report } });
   });
@@ -147,7 +210,7 @@ export function createApiApp(): Hono {
     }
 
     const baselineData = parseOptionalBaseline(body.baselineYaml);
-    const report = await scanTarget(body.url.trim(), {
+    const rawReport = await scanTarget(body.url.trim(), {
       useLlm: body.useLlm,
       llmProvider: body.llmProvider,
       llmModel: body.llmModel,
@@ -157,6 +220,7 @@ export function createApiApp(): Hono {
       baselineData,
       includeSourceContents: true,
     });
+    const report = trimReportSourcesForTransport(rawReport);
     const scanId = recordHistory(report);
     return c.json({ success: true, data: { scanId, report } });
   });
@@ -183,7 +247,7 @@ export function createApiApp(): Hono {
     const first = uploadedFiles[0];
     if (uploadedFiles.length === 1 && first instanceof File && first.name.toLowerCase().endsWith(".zip")) {
       const bytes = new Uint8Array(await first.arrayBuffer());
-      const report = await scanZipBuffer(bytes, first.name, {
+      const rawReport = await scanZipBuffer(bytes, first.name, {
         useLlm,
         llmProvider,
         llmModel,
@@ -193,6 +257,7 @@ export function createApiApp(): Hono {
         baselineData,
         includeSourceContents: true,
       });
+      const report = trimReportSourcesForTransport(rawReport);
       const scanId = recordHistory(report);
       return c.json({ success: true, data: { scanId, report } });
     }
@@ -214,7 +279,7 @@ export function createApiApp(): Hono {
       virtualFiles.push({ path: cleanPath || item.name, content: text });
     }
 
-    const report = await scanInline(
+    const rawReport = await scanInline(
       { name: inferredName, files: virtualFiles },
       {
         useLlm,
@@ -227,6 +292,7 @@ export function createApiApp(): Hono {
         includeSourceContents: true,
       },
     );
+    const report = trimReportSourcesForTransport(rawReport);
     const scanId = recordHistory(report);
     return c.json({ success: true, data: { scanId, report } });
   });
@@ -301,14 +367,23 @@ export function createApiApp(): Hono {
     return c.json({ success: true, data: { scanId: entry.id, report: entry.report } });
   });
 
+  app.all("/api/*", (c) => {
+    return c.json({ success: false, error: `Unknown API endpoint: ${c.req.method} ${c.req.path}` }, 404);
+  });
+
   app.onError((err, c) => {
-    logger.error({ err }, "Unhandled API error");
+    const status = classifyErrorStatus(err);
+    if (status >= 500) {
+      logger.error({ err }, "Unhandled API error");
+    } else {
+      logger.warn({ status, message: err.message }, "Rejected API request");
+    }
     return c.json(
       {
         success: false,
         error: err.message || "Internal scanner error",
       },
-      500,
+      status,
     );
   });
 

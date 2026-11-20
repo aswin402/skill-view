@@ -36,6 +36,25 @@ function readRecords(): StoredScanRecord[] {
   }
 }
 
+function compactReportForStorage(report: ScanReport, stripAllContent = false): ScanReport {
+  if (stripAllContent) {
+    return {
+      ...report,
+      components: report.components.map(({ content: _omit, ...rest }) => rest),
+    };
+  }
+  const hitFiles = new Set(report.issues.map((i) => i.location.file));
+  return {
+    ...report,
+    components: report.components.map((comp) => {
+      const isManifest = comp.path.split("/").pop()?.toLowerCase() === "skill.md";
+      if (isManifest || hitFiles.has(comp.path)) return comp;
+      const { content: _omit, ...rest } = comp;
+      return rest;
+    }),
+  };
+}
+
 function writeRecords(records: StoredScanRecord[]): void {
   if (typeof window === "undefined") return;
   const trimmed = records.slice(0, MAX_STORED_SCANS);
@@ -44,6 +63,27 @@ function writeRecords(records: StoredScanRecord[]): void {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
       return;
     } catch {
+      if (trimmed.length === 1) {
+        // Single large report exceeded quota — retry with compact content, then metadata-only
+        const only = trimmed[0]!;
+        try {
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify([{ ...only, report: compactReportForStorage(only.report, false) }]),
+          );
+          return;
+        } catch {
+          try {
+            window.localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify([{ ...only, report: compactReportForStorage(only.report, true) }]),
+            );
+            return;
+          } catch {
+            break;
+          }
+        }
+      }
       // Storage quota exceeded — evict oldest scan and retry
       trimmed.pop();
     }

@@ -1,27 +1,32 @@
-import { Link } from 'react-router-dom';
-import { MoveLeft } from 'lucide-react';
+import { MoveLeft, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function NotFoundPage() {
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-700">
-      <div className="relative mb-8">
-        <h1 className="text-[12rem] font-black leading-none tracking-tighter text-muted-foreground/10 select-none">
-          404
-        </h1>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-4xl font-heading font-black tracking-tight">PAGE NOT FOUND</p>
-        </div>
+    <div className="forensic-grid-bg flex min-h-screen flex-col items-center justify-center px-6 py-16 text-center">
+      <div
+        className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border"
+        style={{
+          backgroundColor: "var(--accent-telemetry-dim)",
+          borderColor: "rgba(34, 211, 238, 0.4)",
+          color: "var(--accent-telemetry)",
+        }}
+      >
+        <ShieldAlert className="h-6 w-6" />
       </div>
-      
-      <p className="text-xl text-muted-foreground mb-12 max-w-md mx-auto leading-relaxed">
-        The page you are looking for doesn't exist or has been moved to another universe.
+      <p className="font-mono-code text-xs uppercase tracking-widest text-cyan-400">HTTP 404</p>
+      <h1 className="font-display mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        Route Not Found
+      </h1>
+      <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-400">
+        The requested path does not exist on SkillSpectator. Return to the scanner workbench to inspect an AI agent skill.
       </p>
-
       <Link
         to="/"
-        className="flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-2xl font-bold transition-all hover:gap-4 hover:pr-10 hover:shadow-xl active:scale-95"
+        className="font-display mt-6 inline-flex items-center gap-2 rounded bg-cyan-400 px-5 py-2.5 text-xs font-bold tracking-wide text-slate-950 transition-opacity hover:opacity-90"
       >
-        <MoveLeft className="w-5 h-5" /> Back to Home
+        <MoveLeft className="h-4 w-4" />
+        Back to Scanner
       </Link>
     </div>
   );
