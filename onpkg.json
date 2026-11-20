@@ -18,7 +18,8 @@
     "stack": "custom"
   },
   "scripts": {
-    "build": "bun run --cwd apps/web build",
+    "build": "bun run --cwd apps/web build && bun build apps/api/src/app.ts --target=node --format=esm --outfile=api/_handler.mjs",
+    "build:api": "bun build apps/api/src/app.ts --target=node --format=esm --outfile=api/_handler.mjs",
     "dev": "bun run scripts/dev.ts",
     "dev:api": "bun run --cwd apps/api dev",
     "dev:web": "bun run --cwd apps/web dev",
@@ -29,7 +30,6 @@
   },
   "sources": {
     "directories": [
-      "api",
       "apps/api",
       "apps/api/src",
       "apps/api/src/utils",
@@ -63,7 +63,6 @@
     "files": [
       "AGENTS.md",
       "README.md",
-      "api/index.ts",
       "apps/api/AGENTS.md",
       "apps/api/README.md",
       "apps/api/onpkg.json",

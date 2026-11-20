@@ -8,7 +8,8 @@
 - **Technologies:** N/A
 
 ## Commands
-- **build:** `bun run --cwd apps/web build`
+- **build:** `bun run --cwd apps/web build && bun build apps/api/src/app.ts --target=node --format=esm --outfile=api/_handler.mjs`
+- **build:api:** `bun build apps/api/src/app.ts --target=node --format=esm --outfile=api/_handler.mjs`
 - **dev:** `bun run scripts/dev.ts`
 - **dev:api:** `bun run --cwd apps/api dev`
 - **dev:web:** `bun run --cwd apps/web dev`

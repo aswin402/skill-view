@@ -5,6 +5,7 @@ node_modules/
 # Build outputs
 dist/
 apps/web/dist/
+api/_handler.mjs
 build/
 .turbo/
 
